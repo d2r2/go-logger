@@ -77,7 +77,7 @@ func newConsoleHook(logger *Logger) *consoleHook {
 
 func (hook *consoleHook) Fire(entry *logrus.Entry) error {
 	var buf bytes.Buffer
-	isColorTerminal := hook.logger.isTerminal && (runtime.GOOS != "windows")
+	isColorTerminal := /*hook.logger.isTerminal && */ (runtime.GOOS != "windows")
 	printEntry(&buf, entry, isColorTerminal, hook.logger.GetModuleLength())
 	hook.Lock()
 	defer hook.Unlock()
