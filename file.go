@@ -11,13 +11,13 @@ import (
 	"sync"
 )
 
-type LogFile struct {
+type File struct {
 	sync.RWMutex
 	Path string
 	File *os.File
 }
 
-func (v *LogFile) Close() error {
+func (v *File) Close() error {
 	v.Lock()
 	defer v.Unlock()
 	if v.File != nil {
@@ -28,7 +28,7 @@ func (v *LogFile) Close() error {
 	return nil
 }
 
-func (v *LogFile) getRotatedFileList() ([]logFile, error) {
+func (v *File) getRotatedFileList() ([]logFile, error) {
 	var list []logFile
 	err := filepath.Walk(path.Dir(v.Path), func(p string,
 		info os.FileInfo, err error) error {
@@ -49,7 +49,7 @@ func (v *LogFile) getRotatedFileList() ([]logFile, error) {
 	return s.Items, nil
 }
 
-func (v *LogFile) doRotate(items []logFile, rotateMaxCount int) error {
+func (v *File) doRotate(items []logFile, rotateMaxCount int) error {
 	if len(items) > 0 {
 		// delete last files
 		deleteCount := len(items) - rotateMaxCount + 1
@@ -86,7 +86,7 @@ func (v *LogFile) doRotate(items []logFile, rotateMaxCount int) error {
 	return nil
 }
 
-func (v *LogFile) rotateFiles(rotateMaxSize int64, rotateMaxCount int) error {
+func (v *File) rotateFiles(rotateMaxSize int64, rotateMaxCount int) error {
 	fs, err := v.File.Stat()
 	if err != nil {
 		return err
@@ -107,7 +107,7 @@ func (v *LogFile) rotateFiles(rotateMaxSize int64, rotateMaxCount int) error {
 	return nil
 }
 
-func (v *LogFile) getFile() (*os.File, error) {
+func (v *File) getFile() (*os.File, error) {
 	v.Lock()
 	defer v.Unlock()
 	if v.File == nil {
@@ -123,7 +123,7 @@ func (v *LogFile) getFile() (*os.File, error) {
 	return v.File, nil
 }
 
-func (v *LogFile) writeToFile(msg string, rotateMaxSize int64, rotateMaxCount int) error {
+func (v *File) writeToFile(msg string, rotateMaxSize int64, rotateMaxCount int) error {
 	file, err := v.getFile()
 	if err != nil {
 		return err

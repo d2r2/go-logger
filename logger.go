@@ -4,20 +4,19 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"log/syslog"
 	"os"
 	"path"
 	"path/filepath"
 	"sync"
 
 	"github.com/d2r2/go-shell/shell"
-	"github.com/davecgh/go-spew/spew"
 )
 
 type LogLevel int
 
 const (
-	PanicLevel LogLevel = iota
+	FatalLevel LogLevel = iota
+	PanicLevel
 	ErrorLevel
 	WarnLevel
 	InfoLevel
@@ -26,8 +25,10 @@ const (
 
 func (v LogLevel) String() string {
 	switch v {
-	case PanicLevel:
+	case FatalLevel:
 		return "Fatal"
+	case PanicLevel:
+		return "Panic"
 	case ErrorLevel:
 		return "Error"
 	case WarnLevel:
@@ -47,8 +48,10 @@ func (v *LogLevel) LongStr() string {
 
 func (v LogLevel) ShortStr() string {
 	switch v {
+	case FatalLevel:
+		return "Fatal"
 	case PanicLevel:
-		return "Pamic"
+		return "Panic"
 	case ErrorLevel:
 		return "Error"
 	case WarnLevel:
@@ -77,10 +80,10 @@ const (
 type Logger struct {
 	sync.RWMutex
 	log                *log.Logger
-	packages           []*PackageLogger
+	packages           []*Package
 	packagePrintLength int
 	levelFormat        LevelFormat
-	logFile            *LogFile
+	logFile            *File
 	rotateMaxSize      int64
 	rotateMaxCount     int
 	appName            string
@@ -191,27 +194,27 @@ func (v *Logger) SetLogFileName(logFilePath string) error {
 	}
 	v.Lock()
 	defer v.Unlock()
-	lf := &LogFile{Path: fp}
+	lf := &File{Path: fp}
 	v.logFile = lf
 	return nil
 }
 
-func (v *Logger) GetLogFileInfo() *LogFile {
+func (v *Logger) GetLogFileInfo() *File {
 	v.Lock()
 	defer v.Unlock()
 	return v.logFile
 }
 
-func (v *Logger) NewPackageLogger(packageName string, level LogLevel) *PackageLogger {
+func (v *Logger) NewPackageLogger(packageName string, level LogLevel) *Package {
 	v.Lock()
 	defer v.Unlock()
-	p := &PackageLogger{parent: v, packageName: packageName, level: level}
+	p := &Package{parent: v, packageName: packageName, level: level}
 	v.packages = append(v.packages, p)
 	return p
 }
 
 func (v *Logger) ChangePackageLogLevel(packageName string, level LogLevel) error {
-	var p *PackageLogger
+	var p *Package
 	for _, item := range v.packages {
 		if item.packageName == packageName {
 			p = item
@@ -225,172 +228,6 @@ func (v *Logger) ChangePackageLogLevel(packageName string, level LogLevel) error
 		return err
 	}
 	return nil
-}
-
-type PackageLogger struct {
-	sync.RWMutex
-	parent      *Logger
-	packageName string
-	level       LogLevel
-	syslog      *syslog.Writer
-}
-
-func (v *PackageLogger) Close() error {
-	v.Lock()
-	defer v.Unlock()
-	if v.syslog != nil {
-		err := v.syslog.Close()
-		v.syslog = nil
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (v *PackageLogger) SetLogLevel(level LogLevel) {
-	v.Lock()
-	defer v.Unlock()
-	v.level = level
-}
-
-func (v *PackageLogger) GetLogLevel() LogLevel {
-	v.RLock()
-	defer v.RUnlock()
-	return v.level
-}
-
-func (v *PackageLogger) getSyslog(level LogLevel, levelFormat LevelFormat,
-	appName string) (*syslog.Writer, error) {
-	v.Lock()
-	defer v.Unlock()
-	if v.syslog == nil {
-		tag := fmtStr(false, level, levelFormat, appName,
-			v.packageName, -1, "", "%[2]s-%[3]s")
-		sl, err := syslog.New(syslog.LOG_DEBUG, tag)
-		if err != nil {
-			err = spew.Errorf("Failed to connect to syslog: %v\n", err)
-			return nil, err
-		}
-		v.syslog = sl
-	}
-	return v.syslog, nil
-}
-
-func (v *PackageLogger) writeToSyslog(level LogLevel,
-	levelFormat LevelFormat, appName string, msg string) error {
-	sl, err := v.getSyslog(level, levelFormat, appName)
-	if err != nil {
-		return err
-	}
-	switch level {
-	case DebugLevel:
-		return sl.Debug(msg)
-	case InfoLevel:
-		return sl.Info(msg)
-	case WarnLevel:
-		return sl.Warning(msg)
-	case ErrorLevel:
-		return sl.Err(msg)
-	case PanicLevel:
-		return sl.Crit(msg)
-	default:
-		return sl.Debug(msg)
-	}
-}
-
-func (v *PackageLogger) print(level LogLevel, msg string) {
-	lvl := v.GetLogLevel()
-	if lvl >= level {
-		levelFormat := v.parent.GetLevelFormat()
-		packagePrintLen := v.parent.GetPackagePrintLength()
-		appName := v.parent.GetApplicationName()
-		if appName == "" {
-			appName = os.Args[0]
-		}
-		out1 := fmtStr(true, level, levelFormat, appName,
-			v.packageName, packagePrintLen, msg, "%[1]s [%[3]s] %[4]s  %[5]s")
-		// File output
-		if lf := v.parent.GetLogFileInfo(); lf != nil {
-			rotateMaxSize := v.parent.GetRotateMaxSize()
-			rotateMaxCount := v.parent.GetRotateMaxCount()
-			out2 := fmtStr(false, level, levelFormat, appName,
-				v.packageName, packagePrintLen, msg, "%[1]s [%[3]s] %[4]s  %[5]s")
-			if err := lf.writeToFile(out2, rotateMaxSize, rotateMaxCount); err != nil {
-				err = spew.Errorf("Failed to report syslog message %q: %v\n", out2, err)
-				v.parent.log.Fatal(err)
-			}
-		}
-		// Syslog output
-		if v.parent.GetSyslogEnabled() {
-			if err := v.writeToSyslog(level, levelFormat, appName, msg); err != nil {
-				err = spew.Errorf("Failed to report syslog message %q: %v\n", msg, err)
-				v.parent.log.Fatal(err)
-			}
-		}
-		// Console output
-		v.parent.log.Print(out1 + fmt.Sprintln())
-		// Check panic event
-		if level == PanicLevel {
-			panic(out1)
-		}
-	}
-}
-
-func (v *PackageLogger) Printf(level LogLevel, format string, args ...interface{}) {
-	lvl := v.GetLogLevel()
-	if lvl >= level {
-		msg := spew.Sprintf(format, args...)
-		v.print(level, msg)
-	}
-}
-
-func (v *PackageLogger) Print(level LogLevel, args ...interface{}) {
-	lvl := v.GetLogLevel()
-	if lvl >= level {
-		msg := spew.Sprint(args...)
-		v.print(level, msg)
-	}
-}
-
-func (v *PackageLogger) Debugf(format string, args ...interface{}) {
-	v.Printf(DebugLevel, format, args...)
-}
-
-func (v *PackageLogger) Debug(args ...interface{}) {
-	v.Print(DebugLevel, args...)
-}
-
-func (v *PackageLogger) Infof(format string, args ...interface{}) {
-	v.Printf(InfoLevel, format, args...)
-}
-
-func (v *PackageLogger) Info(args ...interface{}) {
-	v.Print(InfoLevel, args...)
-}
-
-func (v *PackageLogger) Warnf(format string, args ...interface{}) {
-	v.Printf(WarnLevel, format, args...)
-}
-
-func (v *PackageLogger) Warn(args ...interface{}) {
-	v.Print(WarnLevel, args...)
-}
-
-func (v *PackageLogger) Errorf(format string, args ...interface{}) {
-	v.Printf(ErrorLevel, format, args...)
-}
-
-func (v *PackageLogger) Error(args ...interface{}) {
-	v.Print(ErrorLevel, args...)
-}
-
-func (v *PackageLogger) Panicf(format string, args ...interface{}) {
-	v.Printf(PanicLevel, format, args...)
-}
-
-func (v *PackageLogger) Panic(args ...interface{}) {
-	v.Print(PanicLevel, args...)
 }
 
 var (
@@ -409,7 +246,7 @@ func SetRotateParams(rotateMaxSize int64, rotateMaxCount int) {
 	lgr.SetRotateParams(rotateMaxSize, rotateMaxCount)
 }
 
-func NewPackageLogger(module string, level LogLevel) *PackageLogger {
+func NewPackageLogger(module string, level LogLevel) *Package {
 	return lgr.NewPackageLogger(module, level)
 }
 
