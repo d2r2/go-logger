@@ -134,7 +134,7 @@ func (v *Package) Printf(level LogLevel, format string, args ...interface{}) {
 func (v *Package) Print(level LogLevel, args ...interface{}) {
 	lvl := v.GetLogLevel()
 	if lvl >= level {
-		msg := spew.Sprint(args...)
+		msg := fmt.Sprint(args...)
 		v.print(level, msg)
 	}
 }

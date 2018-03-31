@@ -231,38 +231,55 @@ func (v *Logger) ChangePackageLogLevel(packageName string, level LogLevel) error
 }
 
 var (
-	lgr *Logger
+	globalLock sync.RWMutex
+	lgr        *Logger
 )
 
 func SetLevelFormat(levelFormat LevelFormat) {
+	globalLock.RLock()
+	defer globalLock.RUnlock()
 	lgr.SetLevelFormat(levelFormat)
 }
 
 func SetPackagePrintLength(packagePrintLength int) {
+	globalLock.RLock()
+	defer globalLock.RUnlock()
 	lgr.SetPackagePrintLength(packagePrintLength)
 }
 
 func SetRotateParams(rotateMaxSize int64, rotateMaxCount int) {
+	globalLock.RLock()
+	defer globalLock.RUnlock()
 	lgr.SetRotateParams(rotateMaxSize, rotateMaxCount)
 }
 
 func NewPackageLogger(module string, level LogLevel) *Package {
+	globalLock.RLock()
+	defer globalLock.RUnlock()
 	return lgr.NewPackageLogger(module, level)
 }
 
 func ChangePackageLogLevel(packageName string, level LogLevel) error {
+	globalLock.RLock()
+	defer globalLock.RUnlock()
 	return lgr.ChangePackageLogLevel(packageName, level)
 }
 
 func SetLogFileName(logFilePath string) error {
+	globalLock.RLock()
+	defer globalLock.RUnlock()
 	return lgr.SetLogFileName(logFilePath)
 }
 
 func SetApplicationName(appName string) {
+	globalLock.RLock()
+	defer globalLock.RUnlock()
 	lgr.SetApplicationName(appName)
 }
 
 func EnableSyslog(enable bool) {
+	globalLock.RLock()
+	defer globalLock.RUnlock()
 	lgr.EnableSyslog(enable)
 }
 
@@ -271,8 +288,8 @@ func FinalizeLogger() error {
 	if lgr != nil {
 		err = lgr.Close()
 	}
-	lgr.Lock()
-	defer lgr.Unlock()
+	globalLock.Lock()
+	defer globalLock.Unlock()
 	lgr = nil
 	return err
 }
@@ -284,10 +301,11 @@ func init() {
 
 	go func(logger *Logger) {
 		<-ctx.Done()
+		lg := logger.NewPackageLogger("logger", InfoLevel)
+		lg.Info("Finalizing logger, due to termination pending request")
 		logger.Close()
-		lgr.Lock()
-		defer lgr.Unlock()
+		globalLock.Lock()
+		defer globalLock.Unlock()
 		lgr = nil
-		log.Println("Finalizing logger")
 	}(lgr)
 }
