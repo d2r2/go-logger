@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/d2r2/go-shell/shell"
+	"github.com/d2r2/go-shell"
 )
 
 type LogLevel int
