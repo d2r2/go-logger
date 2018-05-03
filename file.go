@@ -92,9 +92,12 @@ func (v *File) rotateFiles(rotateMaxSize int64, rotateMaxCount int) error {
 		return err
 	}
 	if fs.Size() > rotateMaxSize {
-		err = v.Close()
-		if err != nil {
-			return err
+		if v.File != nil {
+			err := v.File.Close()
+			if err != nil {
+				return err
+			}
+			v.File = nil
 		}
 		list, err := v.getRotatedFileList()
 		if err != nil {
