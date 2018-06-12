@@ -206,8 +206,8 @@ func (v *Logger) SetLogFileName(logFilePath string) error {
 }
 
 func (v *Logger) GetLogFileInfo() *File {
-	v.Lock()
-	defer v.Unlock()
+	v.RLock()
+	defer v.RUnlock()
 	return v.logFile
 }
 
