@@ -1,2 +1,2 @@
-Golang logger functionality with logging separation by package to improve debug proces
+Golang logger functionality with logging separation by package to improve debug process
 
