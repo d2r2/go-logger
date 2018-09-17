@@ -71,19 +71,6 @@ func (v LogLevel) ShortStr() string {
 	}
 }
 
-type LevelLength int
-
-const (
-	LevelShort LevelLength = iota
-	LevelLong
-)
-
-type FormatOptions struct {
-	TimeFormat    string
-	PackageLength int
-	LevelLength   LevelLength
-}
-
 type Log struct {
 	log     *log.Logger
 	colored bool
@@ -103,8 +90,8 @@ type Logger struct {
 	logFile        *File
 	rotateMaxSize  int64
 	rotateMaxCount int
-	appName        string
-	enableSyslog   bool
+	//	appName        string
+	enableSyslog bool
 }
 
 func NewLogger() *Logger {
@@ -154,6 +141,7 @@ func (v *Logger) GetRotateMaxCount() int {
 	return v.rotateMaxCount
 }
 
+/*
 func (v *Logger) SetApplicationName(appName string) {
 	v.Lock()
 	defer v.Unlock()
@@ -165,6 +153,7 @@ func (v *Logger) GetApplicationName() string {
 	defer v.RUnlock()
 	return v.appName
 }
+*/
 
 func (v *Logger) EnableSyslog(enable bool) {
 	v.Lock()
@@ -288,11 +277,13 @@ func SetLogFileName(logFilePath string) error {
 	return lgr.SetLogFileName(logFilePath)
 }
 
+/*
 func SetApplicationName(appName string) {
 	globalLock.RLock()
 	defer globalLock.RUnlock()
 	lgr.SetApplicationName(appName)
 }
+*/
 
 func EnableSyslog(enable bool) {
 	globalLock.RLock()

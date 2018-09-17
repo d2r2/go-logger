@@ -10,7 +10,6 @@ import (
 )
 
 type PackageLog interface {
-	FormatMessage(options FormatOptions, level LogLevel, msg string, colored bool) string
 	Printf(level LogLevel, format string, args ...interface{})
 	Print(level LogLevel, args ...interface{})
 	Debugf(format string, args ...interface{})
@@ -72,7 +71,7 @@ func (v *Package) getSyslog(level LogLevel, options FormatOptions,
 	v.Lock()
 	defer v.Unlock()
 	if v.syslog == nil {
-		tag := fmtStr(false, level, options, appName,
+		tag := metaFmtStr(false, level, options, appName,
 			v.packageName, "", "%[2]s-%[3]s")
 		sl, err := syslog.New(syslog.LOG_DEBUG, tag)
 		if err != nil {
@@ -121,26 +120,13 @@ func printLogs(logs []*Log, level LogLevel, prnt printLog, getMsg getMessage) {
 	}
 }
 
-func (v *Package) FormatMessage(options FormatOptions, level LogLevel, msg string, colored bool) string {
-	appName := v.parent.GetApplicationName()
-	if appName == "" {
-		appName = os.Args[0]
-	}
-	out := fmtStr(colored, level, options, appName,
-		v.packageName, msg, "%[1]s [%[3]s] %[4]s  %[5]s")
-	return out
-}
-
 func (v *Package) print(level LogLevel, msg string) {
 	lvl := v.GetLogLevel()
 	if lvl >= level {
-		appName := v.parent.GetApplicationName()
-		if appName == "" {
-			appName = os.Args[0]
-		}
+		appName := getApplicationName()
 		logs := v.parent.getLogs()
 		options := v.parent.GetFormatOptions()
-		out1 := v.FormatMessage(options, level, msg, false)
+		out1 := FormatMessage(options, level, v.packageName, msg, false)
 		// File output
 		if lf := v.parent.GetLogFileInfo(); lf != nil {
 			rotateMaxSize := v.parent.GetRotateMaxSize()
@@ -170,7 +156,7 @@ func (v *Package) print(level LogLevel, msg string) {
 			}
 		}
 		// Console and custom logs output
-		outColored1 := v.FormatMessage(options, level, msg, true)
+		outColored1 := FormatMessage(options, level, v.packageName, msg, true)
 		printLogs(logs, level,
 			func(log *Log, msg interface{}) {
 				log.log.Print(msg)

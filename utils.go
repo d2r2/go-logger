@@ -96,7 +96,7 @@ func cutOrIndentText(text string, length int, indent IndentKind) string {
 	return text
 }
 
-func fmtStr(colored bool, level LogLevel, options FormatOptions, appName string,
+func metaFmtStr(colored bool, level LogLevel, options FormatOptions, appName string,
 	packageName string, message string, format string) string {
 	var colorPfx, colorSfx string
 	if colored {
@@ -133,4 +133,9 @@ func fmtStr(colored bool, level LogLevel, options FormatOptions, appName string,
 	arg5 := message
 	out := fmt.Sprintf(format, arg1, arg2, arg3, arg4, arg5)
 	return out
+}
+
+func getApplicationName() string {
+	appName := os.Args[0]
+	return appName
 }
