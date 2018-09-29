@@ -321,6 +321,7 @@ func init() {
 		logger.Close()
 		globalLock.Lock()
 		defer globalLock.Unlock()
+		defer FinalizeLogger()
 		lgr = nil
 	}(lgr)
 }
