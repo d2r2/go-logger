@@ -311,7 +311,7 @@ func FinalizeLogger() error {
 func init() {
 	lgr = NewLogger()
 	ctx, cancel := context.WithCancel(context.Background())
-	shell.CloseContextOnKillSignal(cancel)
+	shell.CloseContextOnKillSignal(cancel, nil)
 
 	go func(logger *Logger) {
 		<-ctx.Done()
