@@ -1,7 +1,6 @@
 package logger
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"log"
@@ -9,8 +8,6 @@ import (
 	"path"
 	"path/filepath"
 	"sync"
-
-	"github.com/d2r2/go-shell"
 )
 
 type LogLevel int
@@ -90,8 +87,7 @@ type Logger struct {
 	logFile        *File
 	rotateMaxSize  int64
 	rotateMaxCount int
-	//	appName        string
-	enableSyslog bool
+	enableSyslog   bool
 }
 
 func NewLogger() *Logger {
@@ -310,17 +306,4 @@ func FinalizeLogger() error {
 
 func init() {
 	lgr = NewLogger()
-	ctx, cancel := context.WithCancel(context.Background())
-	shell.CloseContextOnKillSignal(cancel, nil)
-
-	go func(logger *Logger) {
-		<-ctx.Done()
-		lg := logger.NewPackageLogger("logger", InfoLevel)
-		options := FormatOptions{TimeFormat: "2006-01-02T15:04:05.000", LevelLength: LevelShort, PackageLength: 8}
-		lg.Info(options, "Finalizing logger, due to termination pending request")
-		logger.Close()
-		globalLock.Lock()
-		defer globalLock.Unlock()
-		lgr = nil
-	}(lgr)
 }

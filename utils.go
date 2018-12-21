@@ -119,16 +119,8 @@ func metaFmtStr(colored bool, level LogLevel, options FormatOptions, appName str
 	arg1 := time.Now().Format(options.TimeFormat)
 	arg2 := appName
 	arg3 := cutOrIndentText(packageName, options.PackageLength, RightIndent)
-	var lvlLen int
-	var lvlStr string
-	switch options.LevelLength {
-	case LevelLong:
-		lvlLen = len([]rune(InfoLevel.LongStr()))
-		lvlStr = level.LongStr()
-	case LevelShort:
-		lvlLen = len([]rune(NotifyLevel.ShortStr()))
-		lvlStr = level.ShortStr()
-	}
+	lvlStr := options.GetLevelStr(level)
+	lvlLen := len([]rune(lvlStr))
 	arg4 := colorPfx + cutOrIndentText(strings.ToUpper(lvlStr), lvlLen, LeftIndent) + colorSfx
 	arg5 := message
 	out := fmt.Sprintf(format, arg1, arg2, arg3, arg4, arg5)
