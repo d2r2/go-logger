@@ -17,6 +17,17 @@ type File struct {
 	File *os.File
 }
 
+func (v *File) Flush() error {
+	v.Lock()
+	defer v.Unlock()
+	if v.File != nil {
+		err := v.File.Sync()
+		v.File = nil
+		return err
+	}
+	return nil
+}
+
 func (v *File) Close() error {
 	v.Lock()
 	defer v.Unlock()

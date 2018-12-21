@@ -21,3 +21,11 @@ func FormatMessage(options FormatOptions, level LogLevel, packageName, msg strin
 		packageName, msg, "%[1]s [%[3]s] %[4]s  %[5]s")
 	return out
 }
+
+func (options FormatOptions) GetLevelStr(level LogLevel) string {
+	if options.LevelLength == LevelLong {
+		return level.LongStr()
+	} else {
+		return level.ShortStr()
+	}
+}
