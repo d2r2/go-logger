@@ -95,6 +95,8 @@ func (v *Package) writeToSyslog(options FormatOptions,
 		return sl.Debug(msg)
 	case InfoLevel:
 		return sl.Info(msg)
+	case NotifyLevel:
+		return sl.Notice(msg)
 	case WarnLevel:
 		return sl.Warning(msg)
 	case ErrorLevel:
